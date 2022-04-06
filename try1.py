@@ -21,6 +21,42 @@ import string
 import copy
 # from typing import List
 import sys
+from typing import List
+
+wortle_words_filename = 'wordle_words.txt'
+
+
+def str_to_codes(s: str) -> list:
+    l = list(s)
+    cl = []
+    for c in list(s):
+        cl.append(ord(c))
+    return cl
+
+
+class WordGuess:
+    """
+
+    """
+
+    def __init__(self, letters: str, result: str) -> None:
+        self.letters = letters
+        self.result = result
+
+    def __str__(self, label=None, end='\n'):
+        s: str = ''
+        if end:
+            eol = end
+        else:
+            eol = ''
+        if label:
+            s += label + ' = '
+        indent = '\t'
+        s += '{' + eol
+        s += indent + 'letters = ' + self.letters + eol
+        s += indent + 'result = ' + self.result + eol
+        s += '}' + eol
+        return s
 
 
 class WordFilter:
@@ -40,56 +76,135 @@ class WordFilter:
     """
     alphabet_string: str = string.ascii_lowercase
     alphabet_list = list(alphabet_string)
+    debug = False
 
     def __init__(self):
         # print('doc = <doc>' + self.__doc__ + '</doc>')
         # print(self.__class__.__name__)
         # print(self.__class__.__str__(self))
         # print(self.__str__)
+
         self.must_have = []
-        self.patterns: list = []
+        self.must_not_have = []
+        self.patterns: list[list[str]] = []
 
         for i in range(0, 5):
-            self.patterns.append(WordFilter.alphabet_list)
-        self.print_patterns()
+            # Simple assignment just copies a reference to WordFilter.alphabet_list
+            # so copy.copy() needs to be called.
+            # self.patterns.append(WordFilter.alphabet_list)
+            self.patterns.append(copy.copy(self.alphabet_list))
 
-        # print('alphabet_string', WordFilter.alphabet_string)
-        # print('alphabet_list', WordFilter.alphabet_list)
-        # print('alphabet_list ', end='')
-        # self.print_patterns()
+        if self.debug:
+            print(self.__str__(label='WordFilter ctor', end='\n'))
+            self.patterns[0].remove('a')
+            print(self.get_pattern(WordFilter.alphabet_list))
+            print(self.get_patterns(self.patterns))
+            # print(self.__str__(label='WordFilter ctor', end='\n'))
 
-        print(self.__str__(), end='')
-
-    def get_pattern(self, pattern) -> str :
-        s: str = '[' + ''.join(pattern) + ']' + '\n'
+    def get_pattern(self, pattern: list[str]) -> str:
+        s: str = '[' + ''.join(pattern) + ']'
         return s
 
-    def get_patterns(self, label=None) -> str :
-        s: str = ''
+    def get_patterns(self, patterns, label=None, indent=None, end=None) -> str:
+        if not indent:
+            indent = ''
+        # indent = '<' + indent + '>'
         if label:
-            s += label + ' = '
-        # s += '[' + ''.join(WordFilter.alphabet_list) + ']' + '\n'
-        s += '[' + '\n'
-        for v in self.patterns:
-            s += '\t' + self.get_pattern(v)
-        s += ']' + '\n'
+            # print('label: ' + label)
+            label = label + ': '
+            # print('setting label to \'' + label + '\'')
+        else:
+            label = ''
+            # print('setting label to \'' + label + '\'')
+        eol: str = ''
+        if end:
+            eol = end
+        # eol = '{' + eol + '}'
+        s: str = ''
+        s = label
+        s += '[' + eol
+        for v in patterns:
+            s += indent + self.get_pattern(v)
+        s += ']'
         return s
 
-    def print_patterns(self, label=None) -> None:
-        # print(self.__class__.__name__)
-        print(self.get_patterns(label))
+    def process_guess(self, guess: str, result: str):
+        gl = list(guess)
+        rl = list(result)
+        must_have = []
+        must_not_have = []
+        if len(gl) != 5:
+            raise Exception("guess must be 5 characters")
+        if len(rl) != 5:
+            raise Exception("result must be 5 characters")
+        for i in range(5):
+            letter = gl[i]
+            color: str = rl[i]
+            print(i, letter, color, end='')
+            if 'b' == color:
+                print(' black: ' + letter)
+                self.must_not_have.append(letter)
+                for j in range(5):
+                    if letter in self.patterns[j]:
+                        self.patterns[j].remove(letter)
+                print(self.get_patterns(self.patterns, label='black' + ' ' + color), '\n')
+            elif 'y' == color:
+                print(' yellow: ' + letter)
+                self.must_have.append(letter)
+                if letter in self.patterns[i]:
+                    self.patterns[i].remove(letter)
+                print(self.get_patterns(self.patterns, label='yellow' + ' ' + color), '\n')
+            elif 'g' == color:
+                print(' green: ' + letter)
+                self.patterns[i] = [letter]
+                print(self.get_pattern(self.patterns[i]))
+                print(self.get_patterns(self.patterns, label='green' + ' ' + color), '\n')
+            else:
+                print('Invalid color code', color)
+                raise Exception("Invalid result color: " + color)
 
-    def __str__(self):
+    def get_regex_pattern(self):
+        s: string = ''
+        for p in self.patterns:
+            s += self.get_pattern(p)
+        if self.debug:
+            print('get_regex_pattern:', s)
+        return s
+
+    def __str__(self, label=None, end='\n'):
+        print('WordFilter.class: ' + self.__class__.__name__)
+        indent = ''
+        if label:
+            print(label + ' = ')
+            indent = '\t'
+        else:
+            print('label not set')
+        if not end:
+            print('set eol to empty string: {}')
+            eol = ''
+        else:
+            if self.debug:
+                print('set eol to end: {' + end + '}')
+                print('end codes:', str_to_codes(end))
+            eol = end
+        if self.debug:
+            eol = '{' + eol + '}'
+        else:
+            eol = eol
+
         s: str = ''
-        s += 'alphabet_string: ' + WordFilter.alphabet_string + '\n'
-        s += 'alphabet_list: ' + self.get_patterns() + '\n'
-        s += 'must_have: [' + ''.join(self.must_have) + ']\n'
-        s += 'patterns: \n' + self.get_patterns()
+        s = '{' + eol
+        s += indent + 'alphabet_string: ' + WordFilter.alphabet_string + '\n'
+        s += indent + self.get_patterns(WordFilter.alphabet_list, label='alphabet_list', indent='', end=None) + '\n'
+        s += indent + 'must_have: [' + ''.join(self.must_have) + ']' + '\n'
+        s += indent + 'must_not_have: [' + ''.join(self.must_not_have) + ']' + '\n'
+        s += indent + self.get_patterns(self.patterns, label='patterns') + '\n'
+        s += '}' + eol
         return s
 
 
 def load_wordle_words() -> list:
-    filename = 'wordle_words.txt'
+    filename: str = wortle_words_filename
     words = []
     with open(filename) as word_file:
         for line in word_file:
@@ -105,19 +220,7 @@ def load_wordle_words() -> list:
     return words
 
 
-'''
-def create_word_pattern(patterns):
-    print('create_word_pattern', patterns)
-    pattern = '['
-    for index in range(0, 5):
-        pattern += ''.join(patterns[index]) + ']['
-    # Remove the final '['
-    pattern = pattern[:-1]
-    return pattern
-'''
-
-
-def find_matching_words(pattern, words):
+def find_matching_words(wf: WordFilter, words: list) -> list:
     """ Filter the words list using pattern
 
     :param pattern:
@@ -125,9 +228,11 @@ def find_matching_words(pattern, words):
     :return:
     """
 
+    pattern = wf.get_regex_pattern()
     print('find_matching_words', pattern)
-    # mhw is filtered words
-    mhw = []
+
+    # new_words will contain the filtered word list
+    new_words = []
 
     # Control debug printing
     # debugging = True
@@ -141,116 +246,109 @@ def find_matching_words(pattern, words):
 
     print('exp', exp)
     with open('temp.txt', 'w') as temp:
-        print('words size', len(words))
+        print('original words:', len(words))
         for w in words:
-            if debugging:
-                print('o', w)
+            # if debugging:
+            #    print('o', w)
             if exp.match(w):
                 if debugging:
                     print('f', w)
-                mhw.append(w)
-                temp.write(w + '\n')
-    return mhw
-
-
-def filter_pattern(guess,  patterns: WordFilter) -> list:
-    """ use input to filter parameter list
-
-    :param guess: list
-    :param patterns: WordFilter
-    :return: Any
-    """
-
-    print('filter_pattern', guess, WordFilter)
-
-    letters = guess[0]
-    values = guess[1]
-    print("letters", letters, '\n', 'values', values)
-
-    # Characters that must appear in the word. (From Y)
-    must_have = []
-    include = ''
-
-    for index in range(0, 5):
-        l: object = letters[index]
-        v = values[index]
-        print('filter: ', l, v, index)
-        # Ensure only black, yellow, green blocks allowed
-        if not v in 'bygi':
-            raise TypeError('Invalid color type')
-        if v == 'b':
-            for i in range(0, 5):
-                # print('l:', l)
-                # print(i, l, patterns[i])
-                if l in patterns[i]:
-                    patterns[i].remove(l)
-            print_patterns(patterns)
-        if v == 'g':
-            # Set the indexed value to only allow 'l'
-            patterns[index] = [l]
-            # remove l from all other patterns
-            # use list() to convert range() to a list.
-            r = list(range(0, 5))
-            print(r, type(r))
-            r.remove(index)
-            print(r, type(r))
-            for i in r:
-                patterns[i].remove(l)
-            print_patterns(patterns)
-        if v == 'y':
-            print(patterns[index])
-            if v in patterns[index]:
-                patterns[index].remove(l)
-            print_patterns(patterns)
-            must_have.append(l)
-            # must_have.append(v)
-        if v == 'i':
-            include += l
-            print_patterns(patterns)
-    print('must_have', must_have)
-    return patterns
+                good = True
+                for c in wf.must_have:
+                    if not c in w:
+                        good = False
+                        continue
+                if good:
+                    new_words.append(w)
+                    temp.write(w + '\n')
+    print('remaining words:', len(new_words))
+    return new_words
 
 
 ###############################################################################
 # __main__
 ###############################################################################
 if __name__ == '__main__':
-    # wortle_words = load_words()
     wortle_words = load_wordle_words()
     print('starting with wortle_words', len(wortle_words))
     # print('wortle_words: ' + ' '.join(wortle_words)[:75] + '...')
+
     wf = WordFilter()
+    print(wf.get_pattern(wf.patterns[1]))
 
+    guesses = [['adieu', 'bbygb'], ['build', 'bbybb'], ['vixen', 'bgbgy'], ['finer', 'ggggg']]
+    guesses = [['adieu', 'bbbby'], ['brush', 'gyybb'], ['burly', 'gggbb'], ['burnt', 'ggggg']]
+    start_words = wortle_words
+    count = 0
+    for guess in guesses:
+        ++ count
+        print(guess[0], guess[1])
+        print(wf.__str__(label='guess ' + str(count)))
+        wf.process_guess(guess[0], guess[1])
+        new_words = find_matching_words(wf, start_words)
+        start_words = new_words
+        # If only one word left, the print it.
+        if len(start_words) == 1:
+            print(start_words)
+
+    sys.exit('done')
+    #################################################################
+    #################################################################
+
+    # Create must_not list based upon black letters
+    must_not = wf.alphabet_list
+    # must_not.remove('b')
+    # must_not.remove('e')
+    # must_not.remove('g')
+    # must_not.remove('h')
+    # must_not.remove('i')
+    # must_not.remove('k')
+    # must_not.remove('t')
+    must_not.remove('u')
+    # must_not.remove('w')
+    print('\nmust_not: ' + wf.get_pattern(must_not), len(must_not))
+
+    # Set initial patterns
+    wf.patterns[0] = ['a']
+    wf.patterns[1] = copy.copy(must_not)
+    wf.patterns[2] = ['i']
+    wf.patterns[3] = copy.copy(must_not)
+    wf.patterns[4] = copy.copy(must_not)
+    for p in wf.patterns:
+        print('\t', len(p))
+    print('\nmust_not: ' + wf.get_pattern(must_not), len(must_not))
+
+    # Remove yellow characters
+    # wf.patterns[0].remove('s')
+    wf.patterns[1].remove('d')
+    # wf.patterns[2].remove('o')
+    wf.patterns[3].remove('e')
+    # wf.patterns[4].remove('n')
+    for p in wf.patterns:
+        print('\t', len(p))
+    print('\nmust_not: ' + wf.get_pattern(must_not), len(must_not))
+
+    pattern = wf.get_regex_pattern()
+    print('patterns:', pattern)
+    exp = re.compile(pattern)
+    print('exp', exp)
+    print(wf.get_patterns(label='first try words'))
+    word_list = find_matching_words(pattern, wortle_words)
+
+    # Eliminage words not containing all required characters
+    words1 = []
+    must_have = ['d', 'e']
+    for w in word_list:
+        good = True
+        for c in must_have:
+            if not c in w:
+                good = False
+                continue
+        if good:
+            words1.append(w)
+    for w in words1:
+        print(w, end=' ')
+    print()
+
+    # sys.exit('debugging')
     exit(-1)
-
-    print('my_patterns after initial setup ', end='')
-    wf.print_patterns()
-    print(
-    sys.exit("debugging")
-    ########################################################################
-
-    word_pattern = create_word_pattern(wf.patterns)
-    print('word_pattern', word_pattern)
-
-    # First guess
-    # guess1 = ['roate', 'yybyg']
-    guess1 = ['shout', 'ybybb']
-
-    # Second guess
-    guess2 = ['brake', 'bgybb']
-
-    # Third guess
-    guess3 = ['wring', 'bgbyb']
-
-    # Filter pattern based on guess
-    pattern1 = filter_pattern(guess1, word_pattern)
-    print_patterns(pattern1, 'after guess1')
-
-    # Remove words not matching pattern1
-    words1 = find_matching_words(create_word_pattern(pattern1), wortle_words)
-    print('len(words1)', len(words1))
-
-'''
-    #l2 = ['reamy']
-    #ords2 = filter_words(wortle_words, l2)
-'''
