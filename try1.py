@@ -94,20 +94,19 @@ class WordFilter:
         eol: str = ''
         if end:
             eol = end
-        # eol = '{' + eol + '}'
+
         s: str = ''
         s = label
         s += '[' + eol
         for v in patterns:
-            s += self.get_pattern(v)
-            #s += indent + self.get_pattern(v)
+            s += indent + self.get_pattern(v)
         s += ']'
         return s
 
     def process_guess(self, guess: str, result: str):
         gl = list(guess)
         rl = list(result)
-        must_have = []
+        # must_have = []
         # must_not_have: list[str] = []
         if len(gl) != 5:
             raise Exception("guess must be 5 characters")
@@ -171,8 +170,8 @@ class WordFilter:
         else:
             eol = eol
 
-        s: str = ''
-        s = '{' + eol
+        s = ''
+        s += '{' + eol
         s += indent + 'alphabet_string: ' + WordFilter.alphabet_string + '\n'
         s += indent + self.get_patterns(WordFilter.alphabet_list, label='alphabet_list', indent='', end=None) + '\n'
         s += indent + 'must_have: [' + ''.join(self.must_have) + ']' + '\n'
